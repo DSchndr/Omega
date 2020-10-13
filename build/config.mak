@@ -3,32 +3,14 @@
 PLATFORM ?= device
 DEBUG ?= 0
 
-include build/defaults.mak
-include build/platform.$(PLATFORM).mak
-
-EPSILON_VERSION ?= 13.0.0
-EPSILON_CUSTOM_VERSION ?= 1.19.0-0
-# USERNAME ?= N/A
+HOME_DISPLAY_EXTERNALS ?= 1
+EPSILON_VERSION ?= 14.4.1
+OMEGA_VERSION ?= 1.20.3
+# OMEGA_USERNAME ?= N/A
 EPSILON_APPS ?= calculation rpn graph code statistics probability solver atom sequence regression settings external rpi
-EPSILON_I18N ?= en fr es de pt hu
-# EPSILON_I18N ?= en fr es de pt hu
+EPSILON_I18N ?= en fr nl pt it de es hu
 EPSILON_GETOPT ?= 0
 EPSILON_TELEMETRY ?= 0
 ESCHER_LOG_EVENTS_BINARY ?= 0
-OMEGA_THEME ?= omega_light
-
-ifndef USE_LIBA
-  $(error platform.mak should define USE_LIBA)
-endif
-ifndef EXE
-  $(error platform.mak should define EXE, the extension for executables)
-endif
-include build/toolchain.$(TOOLCHAIN).mak
-
-SFLAGS += -DDEBUG=$(DEBUG)
-ifdef USERNAME
-  SFLAGS += -DUSERNAME="$(USERNAME)"
-endif
-SFLAGS += -DEPSILON_GETOPT=$(EPSILON_GETOPT)
-SFLAGS += -DEPSILON_TELEMETRY=$(EPSILON_TELEMETRY)
-SFLAGS += -DESCHER_LOG_EVENTS_BINARY=$(ESCHER_LOG_EVENTS_BINARY)
+THEME_NAME ?= omega_light
+THEME_REPO ?= local

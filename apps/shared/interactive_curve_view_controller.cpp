@@ -7,15 +7,18 @@ using namespace Poincare;
 
 namespace Shared {
 
-InteractiveCurveViewController::InteractiveCurveViewController(Responder * parentResponder, InputEventHandlerDelegate * inputEventHandlerDelegate, ButtonRowController * header, InteractiveCurveViewRange * interactiveRange, CurveView * curveView, CurveViewCursor * cursor, uint32_t * modelVersion, uint32_t * rangeVersion) :
+InteractiveCurveViewController::InteractiveCurveViewController(Responder * parentResponder, InputEventHandlerDelegate * inputEventHandlerDelegate, ButtonRowController * header, InteractiveCurveViewRange * interactiveRange, CurveView * curveView, CurveViewCursor * cursor, uint32_t * modelVersion, uint32_t * previousModelsVersions, uint32_t * rangeVersion) :
   SimpleInteractiveCurveViewController(parentResponder, cursor),
   ButtonRowDelegate(header, nullptr),
   m_modelVersion(modelVersion),
+  m_previousModelsVersions(previousModelsVersions),
   m_rangeVersion(rangeVersion),
   m_rangeParameterController(this, inputEventHandlerDelegate, interactiveRange),
   m_zoomParameterController(this, interactiveRange, curveView),
+  m_interactiveRange(interactiveRange),
   m_rangeButton(this, I18n::Message::Axis, Invocation([](void * context, void * sender) {
     InteractiveCurveViewController * graphController = (InteractiveCurveViewController *) context;
+    graphController->rangeParameterController()->setRange(graphController->interactiveRange());
     StackViewController * stack = graphController->stackController();
     stack->push(graphController->rangeParameterController());
     return true;
@@ -56,7 +59,11 @@ float InteractiveCurveViewController::addMargin(float y, float range, bool isVer
   assert(topMarginRatio + bottomMarginRatio < 1); // Assertion so that the formula is correct
   float ratioDenominator = 1 - bottomMarginRatio - topMarginRatio;
   float ratio = isMin ? -bottomMarginRatio : topMarginRatio;
-  ratio = ratio / ratioDenominator;
+  /* We want to add slightly more than the required margin, so that
+   * InteractiveCurveViewRange::panToMakePointVisible does not think a point is
+   * invisible due to precision problems when checking if it is outside the
+   * required margin. This is why we add a 1.05f factor. */
+  ratio = 1.05f * ratio / ratioDenominator;
   return y + ratio * range;
 }
 
@@ -108,7 +115,7 @@ void InteractiveCurveViewController::didBecomeFirstResponder() {
   }
 }
 
-ViewController * InteractiveCurveViewController::rangeParameterController() {
+RangeParameterController * InteractiveCurveViewController::rangeParameterController() {
   return &m_rangeParameterController;
 }
 
@@ -132,11 +139,43 @@ Responder * InteractiveCurveViewController::defaultController() {
   return tabController();
 }
 
+bool InteractiveCurveViewController::previousModelsWereAllDeleted() {
+  bool result = true;
+  const int modelsCount = numberOfCurves();
+  const int memoizationCount = numberOfMemoizedVersions();
+
+  // Look for a current model that is the same as in the previous version
+  for (int i = 0; i < modelsCount; i++) {
+    uint32_t currentVersion = modelVersionAtIndex(i);
+    for (int j = 0; j < memoizationCount; j++) {
+      uint32_t * previousVersion = m_previousModelsVersions + j;
+      if (currentVersion == *previousVersion) {
+        result = false;
+        break;
+      }
+    }
+    if (!result) {
+      break;
+    }
+  }
+
+  // Update the memoization
+  for (int i = 0; i < memoizationCount; i++) {
+    uint32_t * previousVersion = m_previousModelsVersions + i;
+    uint32_t newVersion = modelVersionAtIndex(i);
+    if (*previousVersion != newVersion) {
+      *previousVersion = newVersion;
+    }
+  }
+  return result;
+}
+
 void InteractiveCurveViewController::viewWillAppear() {
   SimpleInteractiveCurveViewController::viewWillAppear();
   uint32_t newModelVersion = modelVersion();
   if (*m_modelVersion != newModelVersion) {
-    if (*m_modelVersion == 0 || numberOfCurves() == 1 || shouldSetDefaultOnModelChange()) {
+    // Put previousModelsWereAllDeleted first to update the model versions
+    if (previousModelsWereAllDeleted() || *m_modelVersion == 0 || numberOfCurves() == 1 || shouldSetDefaultOnModelChange()) {
       interactiveCurveViewRange()->setDefault();
     }
     *m_modelVersion = newModelVersion;

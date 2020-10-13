@@ -11,7 +11,7 @@ namespace Calculation {
 
 class IllustratedListController : public ListController, public SelectableTableViewDelegate {
 public:
-  IllustratedListController(Responder * parentResponder, EditExpressionController * editExpressionController);
+  IllustratedListController(EditExpressionController * editExpressionController);
 
   // Responder
   void viewDidDisappear() override;
@@ -31,8 +31,9 @@ public:
   // IllustratedListController
   void setExpression(Poincare::Expression e) override;
 
-  constexpr static KDCoordinate k_illustrationHeight = 100;
+  constexpr static KDCoordinate k_illustrationHeight = 120;
 protected:
+  static KDCoordinate CalculationHeight(Calculation * c, bool expanded) { return ScrollableThreeExpressionsCell::Height(c); }
   Poincare::Expression m_savedExpression;
   CalculationStore m_calculationStore;
 private:

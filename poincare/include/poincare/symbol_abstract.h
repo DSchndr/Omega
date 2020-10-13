@@ -29,7 +29,7 @@ public:
   size_t size() const override;
 
   // ExpressionNode
-  int simplificationOrderSameType(const ExpressionNode * e, bool ascending, bool canBeInterrupted) const override;
+  int simplificationOrderSameType(const ExpressionNode * e, bool ascending, bool canBeInterrupted, bool ignoreParentheses) const override;
 
   // Property
   Sign sign(Context * context) const override;
@@ -37,7 +37,7 @@ public:
 
   // TreeNode
 #if POINCARE_TREE_LOG
-  virtual void logNodeName(std::ostream & stream) const override {
+  void logNodeName(std::ostream & stream) const override {
     stream << "SymbolAbstract";
   }
   virtual void logAttributes(std::ostream & stream) const override {
@@ -66,6 +66,7 @@ class SymbolAbstract : public Expression {
   friend class SymbolAbstractNode;
 public:
   const char * name() const { return node()->name(); }
+  bool hasSameNameAs(const SymbolAbstract & other) const;
   static size_t TruncateExtension(char * dst, const char * src, size_t len);
   static bool matches(const SymbolAbstract & symbol, ExpressionTest test, Context * context);
   constexpr static size_t k_maxNameSize = 8;

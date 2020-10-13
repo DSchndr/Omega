@@ -7,8 +7,8 @@ namespace Calculation {
 
 /* Expressions list controller */
 
-ExpressionsListController::ExpressionsListController(Responder * parentResponder, EditExpressionController * editExpressionController) :
-  ListController(parentResponder, editExpressionController),
+ExpressionsListController::ExpressionsListController(EditExpressionController * editExpressionController) :
+  ListController(editExpressionController),
   m_cells{}
 {
   for (int i = 0; i < k_maxNumberOfCells; i++) {
@@ -24,15 +24,21 @@ int ExpressionsListController::reusableCellCount(int type) {
   return k_maxNumberOfCells;
 }
 
+void ExpressionsListController::viewDidDisappear() {
+  ListController::viewDidDisappear();
+  // Reset cell memoization to avoid taking extra space in the pool
+  for (int i = 0; i < k_maxNumberOfCells; i++) {
+    m_cells[i].setLayout(Layout());
+  }
+}
+
 HighlightCell * ExpressionsListController::reusableCell(int index, int type) {
   return &m_cells[index];
 }
 
 KDCoordinate ExpressionsListController::rowHeight(int j) {
   Layout l = layoutAtIndex(j);
-  if (l.isUninitialized()) {
-    return 0;
-  }
+  assert(!l.isUninitialized());
   return l.layoutSize().height() + 2 * Metric::CommonSmallMargin + Metric::CellSeparatorThickness;
 }
 

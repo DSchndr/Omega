@@ -21,8 +21,8 @@ void ListController::InnerListController::didBecomeFirstResponder() {
 
 /* List Controller */
 
-ListController::ListController(Responder * parentResponder, EditExpressionController * editExpressionController, SelectableTableViewDelegate * delegate) :
-  StackViewController(parentResponder, &m_listController, Palette::ToolboxHeaderText, Palette::ToolboxHeaderBackground, Palette::ToolboxHeaderBorder),
+ListController::ListController(EditExpressionController * editExpressionController, SelectableTableViewDelegate * delegate) :
+  StackViewController(nullptr, &m_listController, Palette::ToolboxHeaderText, Palette::ToolboxHeaderBackground, Palette::ToolboxHeaderBorder),
   m_listController(this, delegate),
   m_editExpressionController(editExpressionController)
 {
@@ -32,9 +32,12 @@ bool ListController::handleEvent(Ion::Events::Event event) {
   if (event == Ion::Events::OK || event == Ion::Events::EXE) {
     char buffer[Constant::MaxSerializedExpressionSize];
     textAtIndex(buffer, Constant::MaxSerializedExpressionSize, selectedRow());
-    m_editExpressionController->insertTextBody(buffer);
+    /* The order is important here: we dismiss the pop-up first because it
+     * clears the Poincare pool from the layouts used to display the pop-up.
+     * Thereby it frees memory to do Poincare computations required by
+     * insertTextBody. */
     Container::activeApp()->dismissModalViewController();
-    Container::activeApp()->setFirstResponder(m_editExpressionController);
+    m_editExpressionController->insertTextBody(buffer);
     return true;
   }
   return false;

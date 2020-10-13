@@ -5,27 +5,26 @@
 #include <float.h>
 #include <cmath>
 #include <string.h>
+#include <algorithm>
 
 using namespace Shared;
 
 namespace Regression {
 
-static inline float maxFloat(float x, float y) { return x > y ? x : y; }
-static inline float minFloat(float x, float y) { return x < y ? x : y; }
-
-static_assert(Model::k_numberOfModels == 9, "Number of models changed, Regression::Store() needs to adapt");
+static_assert(Model::k_numberOfModels == 10, "Number of models changed, Regression::Store() needs to adapt");
 static_assert(Store::k_numberOfSeries == 3, "Number of series changed, Regression::Store() needs to adapt (m_seriesChecksum)");
 
 Store::Store() :
   InteractiveCurveViewRange(),
   DoublePairStore(),
-  m_seriesChecksum{0, 0, 0},
   m_angleUnit(Poincare::Preferences::AngleUnit::Degree)
 {
-  for (int i = 0; i < k_numberOfSeries; i++) {
-    m_regressionTypes[i] = Model::Type::Linear;
-    m_regressionChanged[i] = false;
-  }
+  resetMemoization();
+}
+
+void Store::reset() {
+  deleteAllPairs();
+  resetMemoization();
 }
 
 void Store::tidy() {
@@ -145,8 +144,8 @@ void Store::setDefault() {
   float maxX = -FLT_MAX;
   for (int series = 0; series < k_numberOfSeries; series++) {
     if (!seriesIsEmpty(series)) {
-      minX = minFloat(minX, minValueOfColumn(series, 0));
-      maxX = maxFloat(maxX, maxValueOfColumn(series, 0));
+      minX = std::min(minX, minValueOfColumn(series, 0));
+      maxX = std::max(maxX, maxValueOfColumn(series, 0));
     }
   }
   float range = maxX - minX;
@@ -188,10 +187,17 @@ double Store::doubleCastedNumberOfPairsOfSeries(int series) const {
   return DoublePairStore::numberOfPairsOfSeries(series);
 }
 
+void Store::resetMemoization() {
+  assert(((int)Model::Type::Linear) == 0);
+  memset(m_seriesChecksum, 0, sizeof(m_seriesChecksum));
+  memset(m_regressionTypes, 0, sizeof(m_regressionTypes));
+  memset(m_regressionChanged, 0, sizeof(m_regressionChanged));
+}
+
 float Store::maxValueOfColumn(int series, int i) const {
   float maxColumn = -FLT_MAX;
   for (int k = 0; k < numberOfPairsOfSeries(series); k++) {
-    maxColumn = maxFloat(maxColumn, m_data[series][i][k]);
+    maxColumn = std::max<float>(maxColumn, m_data[series][i][k]);
   }
   return maxColumn;
 }
@@ -199,7 +205,7 @@ float Store::maxValueOfColumn(int series, int i) const {
 float Store::minValueOfColumn(int series, int i) const {
   float minColumn = FLT_MAX;
   for (int k = 0; k < numberOfPairsOfSeries(series); k++) {
-    minColumn = minFloat(minColumn, m_data[series][i][k]);
+    minColumn = std::min<float>(minColumn, m_data[series][i][k]);
   }
   return minColumn;
 }
@@ -279,7 +285,7 @@ double Store::squaredCorrelationCoefficient(int series) const {
 }
 
 Model * Store::regressionModel(int index) {
-  Model * models[Model::k_numberOfModels] = {&m_linearModel, &m_quadraticModel, &m_cubicModel, &m_quarticModel, &m_logarithmicModel, &m_exponentialModel, &m_powerModel, &m_trigonometricModel, &m_logisticModel};
+  Model * models[Model::k_numberOfModels] = {&m_linearModel, &m_proportionalModel, &m_quadraticModel, &m_cubicModel, &m_quarticModel, &m_logarithmicModel, &m_exponentialModel, &m_powerModel, &m_trigonometricModel, &m_logisticModel};
   return models[index];
 }
 

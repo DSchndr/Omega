@@ -9,7 +9,7 @@ using namespace Poincare;
 
 namespace Calculation {
 
-EditExpressionController::ContentView::ContentView(Responder * parentResponder, TableView * subview, InputEventHandlerDelegate * inputEventHandlerDelegate, TextFieldDelegate * textFieldDelegate, LayoutFieldDelegate * layoutFieldDelegate) :
+EditExpressionController::ContentView::ContentView(Responder * parentResponder, CalculationSelectableTableView * subview, InputEventHandlerDelegate * inputEventHandlerDelegate, TextFieldDelegate * textFieldDelegate, LayoutFieldDelegate * layoutFieldDelegate) :
   View(),
   m_mainView(subview),
   m_expressionField(parentResponder, inputEventHandlerDelegate, textFieldDelegate, layoutFieldDelegate)
@@ -42,18 +42,18 @@ EditExpressionController::EditExpressionController(Responder * parentResponder, 
   ViewController(parentResponder),
   m_historyController(historyController),
   m_calculationStore(calculationStore),
-  m_contentView(this, (TableView *)m_historyController->view(), inputEventHandlerDelegate, this, this)
+  m_contentView(this, static_cast<CalculationSelectableTableView *>(m_historyController->view()), inputEventHandlerDelegate, this, this)
 {
   m_cacheBuffer[0] = 0;
 }
 
 void EditExpressionController::insertTextBody(const char * text) {
+  Container::activeApp()->setFirstResponder(this);
   m_contentView.expressionField()->handleEventWithText(text, false, true);
 }
 
 void EditExpressionController::didBecomeFirstResponder() {
-  int lastRow = m_calculationStore->numberOfCalculations() > 0 ? m_calculationStore->numberOfCalculations()-1 : 0;
-  m_historyController->scrollToCell(0, lastRow);
+  m_contentView.mainView()->scrollToBottom();
   m_contentView.expressionField()->setEditing(true, false);
   Container::activeApp()->setFirstResponder(m_contentView.expressionField());
 }
@@ -122,7 +122,7 @@ bool EditExpressionController::inputViewDidReceiveEvent(Ion::Events::Event event
     if (!myApp->isAcceptableText(m_cacheBuffer)) {
       return true;
     }
-    m_calculationStore->push(m_cacheBuffer, myApp->localContext());
+    m_calculationStore->push(m_cacheBuffer, myApp->localContext(), HistoryViewCell::Height);
     m_historyController->reload();
     return true;
   }
@@ -145,7 +145,7 @@ bool EditExpressionController::inputViewDidFinishEditing(const char * text, Layo
   } else {
     layoutR.serializeParsedExpression(m_cacheBuffer, k_cacheBufferSize, context);
   }
-  m_calculationStore->push(m_cacheBuffer, context);
+  m_calculationStore->push(m_cacheBuffer, context, HistoryViewCell::Height);
   m_historyController->reload();
   m_contentView.expressionField()->setEditing(true, true);
   telemetryReportEvent("Input", m_cacheBuffer);

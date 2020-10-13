@@ -1,7 +1,6 @@
 #ifndef POINCARE_EXPRESSION_REFERENCE_H
 #define POINCARE_EXPRESSION_REFERENCE_H
 
-#include <poincare/array_builder.h>
 #include <poincare/coordinate_2D.h>
 #include <poincare/tree_handle.h>
 #include <poincare/preferences.h>
@@ -10,8 +9,6 @@
 #include <poincare/complex.h>
 #include <poincare/solver.h>
 #include <ion/storage.h>
-
-#include <stdio.h>
 
 namespace Poincare {
 
@@ -76,6 +73,7 @@ class Expression : public TreeHandle {
   friend class NthRoot;
   friend class Number;
   friend class Opposite;
+  friend class ParameteredExpression;
   friend class Parenthesis;
   friend class PermuteCoefficient;
   friend class Power;
@@ -112,10 +110,12 @@ class Expression : public TreeHandle {
   friend class IntegralNode;
   template<int T>
   friend class LogarithmNode;
+  friend class MatrixNode;
   friend class NaperianLogarithmNode;
   friend class NAryExpressionNode;
   friend class StoreNode;
   friend class SymbolNode;
+  friend class UnitNode;
 
 public:
   static bool IsExpression() { return true; }
@@ -151,7 +151,7 @@ public:
   bool isDivisionOfIntegers() const;
   bool hasDefinedComplexApproximation(Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit) const;
   typedef bool (*ExpressionTest)(const Expression e, Context * context);
-  bool recursivelyMatches(ExpressionTest test, Context * context, bool replaceSymbols = true) const;
+  bool recursivelyMatches(ExpressionTest test, Context * context, ExpressionNode::SymbolicComputation replaceSymbols = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition) const;
   typedef bool (*ExpressionTypeTest)(const Expression e, const void * context);
   bool hasExpression(ExpressionTypeTest test, const void * context) const;
   // WARNING: this method must be called on reduced (sorted) expressions
@@ -199,7 +199,7 @@ public:
   Expression replaceSymbolWithExpression(const SymbolAbstract & symbol, const Expression & expression) { return node()->replaceSymbolWithExpression(symbol, expression); }
 
   /* Units */
-  Expression getUnit() const { return node()->getUnit(); }
+  Expression removeUnit(Expression * unit) { return node()->removeUnit(unit); }
   bool hasUnit() const;
 
   /* Complex */
@@ -215,6 +215,9 @@ public:
    * same structures and all their nodes have same types and values (ie,
    * sqrt(pi^2) is NOT identical to pi). */
   bool isIdenticalTo(const Expression e) const;
+  /* isIdenticalToWithoutParentheses behaves as isIdenticalTo, but without
+   * taking into account parentheses: e^(0) is identical to e^0. */
+  bool isIdenticalToWithoutParentheses(const Expression e) const;
   static bool ParsedExpressionsAreEqual(const char * e0, const char * e1, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit);
 
   /* Layout Helper */
@@ -236,11 +239,11 @@ public:
    *   account the complex format required in the expression they return.
    *   (For instance, in Polar mode, they return an expression of the form
    *   r*e^(i*th) reduced and approximated.) */
-  static Expression ParseAndSimplify(const char * text, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition);
+  static Expression ParseAndSimplify(const char * text, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition, ExpressionNode::UnitConversion unitConversion = ExpressionNode::UnitConversion::Default);
   Expression simplify(ExpressionNode::ReductionContext reductionContext);
 
-  static void ParseAndSimplifyAndApproximate(const char * text, Expression * simplifiedExpression, Expression * approximateExpression, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition);
-  void simplifyAndApproximate(Expression * simplifiedExpression, Expression * approximateExpression, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition);
+  static void ParseAndSimplifyAndApproximate(const char * text, Expression * simplifiedExpression, Expression * approximateExpression, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition, ExpressionNode::UnitConversion unitConversion = ExpressionNode::UnitConversion::Default);
+  void simplifyAndApproximate(Expression * simplifiedExpression, Expression * approximateExpression, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, ExpressionNode::SymbolicComputation symbolicComputation = ExpressionNode::SymbolicComputation::ReplaceAllDefinedSymbolsWithDefinition, ExpressionNode::UnitConversion unitConversion = ExpressionNode::UnitConversion::Default);
   Expression reduce(ExpressionNode::ReductionContext context);
 
   Expression mapOnMatrixFirstChild(ExpressionNode::ReductionContext reductionContext);
@@ -274,7 +277,7 @@ public:
       m_numberOfChildren(numberOfChildren),
       m_untypedBuilder(builder) {}
     const char * name() const { return m_name; }
-    const int numberOfChildren() const { return m_numberOfChildren; }
+    int numberOfChildren() const { return m_numberOfChildren; }
     Expression build(Expression children) const { return (*m_untypedBuilder)(children); }
   private:
     const char * m_name;
@@ -283,6 +286,9 @@ public:
   };
 
   static void Tidy() { sSymbolReplacementsCountLock = false; }
+
+  /* Tuple */
+  typedef std::initializer_list<Expression> Tuple;
 
 protected:
   static bool SimplificationHasBeenInterrupted();
@@ -326,6 +332,12 @@ protected:
     return *reinterpret_cast<T *>(const_cast<Expression *>(this));
   }
 
+  static_assert(sizeof(TreeHandle::Tuple) == sizeof(Tuple), "Size mismatch");
+  static const TreeHandle::Tuple & convert(const Tuple & l) {
+    assert(sizeof(TreeHandle) == sizeof(Expression));
+    return reinterpret_cast<const TreeHandle::Tuple &>(l);
+  }
+
   /* Reference */
   ExpressionNode * node() const {
     assert(identifier() != TreeNode::NoNodeIdentifier || !TreeHandle::node()->isGhost());
@@ -346,8 +358,8 @@ protected:
   Expression defaultReplaceSymbolWithExpression(const SymbolAbstract & symbol, const Expression expression);
   /* 'deepReplaceReplaceableSymbols' returns an uninitialized expression if it
    * is circularly defined. Same convention as for 'ExpressionWithoutSymbols'.*/
-  Expression deepReplaceReplaceableSymbols(Context * context, bool * didReplace, bool replaceFunctionsOnly) { return node()->deepReplaceReplaceableSymbols(context, didReplace, replaceFunctionsOnly); }
-  Expression defaultReplaceReplaceableSymbols(Context * context, bool * didReplace, bool replaceFunctionsOnly);
+  Expression deepReplaceReplaceableSymbols(Context * context, bool * didReplace, bool replaceFunctionsOnly, int parameteredAncestorsCount) { return node()->deepReplaceReplaceableSymbols(context, didReplace, replaceFunctionsOnly, parameteredAncestorsCount); }
+  Expression defaultReplaceReplaceableSymbols(Context * context, bool * didReplace, bool replaceFunctionsOnly, int parameteredAncestorsCount);
 
   /* Simplification */
   void beautifyAndApproximateScalar(Expression * simplifiedExpression, Expression * approximateExpression, ExpressionNode::ReductionContext userReductionContext, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit);
@@ -413,10 +425,8 @@ private:
   constexpr static double k_maxFloat = 1e100;
   Coordinate2D<double> nextMinimumOfExpression(const char * symbol, double start, double step, double max, Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression = Expression(), bool lookForRootMinimum = false) const;
   void bracketMinimum(const char * symbol, double start, double step, double max, double result[3], Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression = Expression()) const;
-  Coordinate2D<double> brentMinimum(const char * symbol, double ax, double bx, Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression = Expression()) const;
   double nextIntersectionWithExpression(const char * symbol, double start, double step, double max, Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression) const;
   void bracketRoot(const char * symbol, double start, double step, double max, double result[2], Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression) const;
-  double brentRoot(const char * symbol, double ax, double bx, double precision, Solver::ValueAtAbscissa evaluation, Context * context, Preferences::ComplexFormat complexFormat, Preferences::AngleUnit angleUnit, const Expression expression) const;
 };
 
 }

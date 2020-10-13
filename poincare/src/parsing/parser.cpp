@@ -1,10 +1,9 @@
 #include "parser.h"
 #include <ion/unicode/utf8_decoder.h>
 #include <utility>
+#include <algorithm>
 
 namespace Poincare {
-
-static inline Token::Type maxToken(Token::Type x, Token::Type y) { return ((int)x > (int) y ? x : y); }
 
 constexpr const Expression::FunctionHelper * Parser::s_reservedFunctions[];
 
@@ -46,13 +45,9 @@ bool Parser::IsSpecialIdentifierName(const char * name, size_t nameLength) {
     Token::CompareNonNullTerminatedName(name, nameLength, Infinity::Name())  == 0 ||
     Token::CompareNonNullTerminatedName(name, nameLength, Undefined::Name()) == 0 ||
     Token::CompareNonNullTerminatedName(name, nameLength, Unreal::Name())    == 0 ||
-    Token::CompareNonNullTerminatedName(name, nameLength, "u_")              == 0 ||
-    Token::CompareNonNullTerminatedName(name, nameLength, "v_")              == 0 ||
-    Token::CompareNonNullTerminatedName(name, nameLength, "w_")              == 0 ||
     Token::CompareNonNullTerminatedName(name, nameLength, "u")               == 0 ||
     Token::CompareNonNullTerminatedName(name, nameLength, "v")               == 0 ||
-    Token::CompareNonNullTerminatedName(name, nameLength, "w")               == 0 ||
-    Token::CompareNonNullTerminatedName(name, nameLength, "log_")            == 0
+    Token::CompareNonNullTerminatedName(name, nameLength, "w")               == 0
   );
 }
 
@@ -189,7 +184,7 @@ void Parser::parseEmpty(Expression & leftHandSide, Token::Type stoppingType) {
 
 void Parser::parseMinus(Expression & leftHandSide, Token::Type stoppingType) {
   if (leftHandSide.isUninitialized()) {
-    Expression rightHandSide = parseUntil(maxToken(stoppingType, Token::Minus));
+    Expression rightHandSide = parseUntil(std::max(stoppingType, Token::Minus));
     if (m_status != Status::Progress) {
       return;
     }
@@ -281,32 +276,29 @@ void Parser::parseRightwardsArrow(Expression & leftHandSide, Token::Type stoppin
     return;
   }
   // At this point, m_currentToken is Token::RightwardsArrow.
-  bool parseId = m_nextToken.is(Token::Identifier) && !IsReservedName(m_nextToken.text(), m_nextToken.length());
-  if (parseId) {
-    popToken();
-    // Try parsing a store
-    Expression rightHandSide;
-    parseCustomIdentifier(rightHandSide, m_currentToken.text(), m_currentToken.length(), true);
-    if (m_status != Status::Progress) {
-      return;
-    }
-    if (!m_nextToken.is(Token::EndOfStream)
-        || !(rightHandSide.type() == ExpressionNode::Type::Symbol
-          || (rightHandSide.type() == ExpressionNode::Type::Function
-            && rightHandSide.childAtIndex(0).type() == ExpressionNode::Type::Symbol)))
-    {
-      m_status = Status::Error; // Store expects a single symbol or function.
-      return;
-    }
+  const char * tokenName = m_nextToken.text();
+  size_t tokenNameLength = m_nextToken.length();
+  /* Right part of the RightwardsArrow are either a Symbol, a Function or units.
+   * Even undefined function "plouf(x)" should be interpreted as function and
+   * not as a multiplication. */
+  m_symbolPlusParenthesesAreFunctions = true;
+  Expression rightHandSide = parseUntil(stoppingType);
+  m_symbolPlusParenthesesAreFunctions = false;
+  if (m_status != Status::Progress) {
+    return;
+  }
+
+  // Pattern : "-> a" or "-> f(x)" Try parsing a store
+  if (m_nextToken.is(Token::EndOfStream) &&
+      (rightHandSide.type() == ExpressionNode::Type::Symbol
+       || (rightHandSide.type() == ExpressionNode::Type::Function
+         && rightHandSide.childAtIndex(0).type() == ExpressionNode::Type::Symbol)) &&
+      !IsReservedName(tokenName, tokenNameLength)) {
     leftHandSide = Store::Builder(leftHandSide, static_cast<SymbolAbstract&>(rightHandSide));
     return;
   }
   // Try parsing a unit convert
-  Expression rightHandSide = parseUntil(stoppingType);
-  if (m_status != Status::Progress) {
-    return;
-  }
-  if (!m_nextToken.is(Token::EndOfStream) || rightHandSide.isUninitialized() || rightHandSide.type() == ExpressionNode::Type::Store || rightHandSide.type() == ExpressionNode::Type::UnitConvert) {
+  if (!m_nextToken.is(Token::EndOfStream) || rightHandSide.isUninitialized() || rightHandSide.type() == ExpressionNode::Type::Store || rightHandSide.type() == ExpressionNode::Type::UnitConvert || rightHandSide.type() == ExpressionNode::Type::Equal) {
     m_status = Status::Error; // UnitConvert expect a unit on the right.
     return;
   }
@@ -370,6 +362,25 @@ void Parser::parseUnit(Expression & leftHandSide, Token::Type stoppingType) {
 
 void Parser::parseReservedFunction(Expression & leftHandSide, const Expression::FunctionHelper * const * functionHelper) {
   const char * name = (**functionHelper).name();
+
+  if (strcmp(name, "log") == 0 && popTokenIfType(Token::LeftBrace)) {
+    // Special case for the log function (e.g. "log{2}(8)")
+    Expression base = parseUntil(Token::RightBrace);
+    if (m_status != Status::Progress) {
+    } else if (!popTokenIfType(Token::RightBrace)) {
+      m_status = Status::Error; // Right brace missing.
+    } else {
+      Expression parameter = parseFunctionParameters();
+      if (m_status != Status::Progress) {
+      } else if (parameter.numberOfChildren() != 1) {
+        m_status = Status::Error; // Unexpected number of many parameters.
+      } else {
+        leftHandSide = Logarithm::Builder(parameter.childAtIndex(0), base);
+      }
+    }
+    return;
+  }
+
   Expression parameters = parseFunctionParameters();
   if (m_status != Status::Progress) {
     return;
@@ -393,10 +404,12 @@ void Parser::parseReservedFunction(Expression & leftHandSide, const Expression::
   }
 }
 
-void Parser::parseSequence(Expression & leftHandSide, const char name, Token::Type leftDelimiter, Token::Type rightDelimiter) {
-  if (!popTokenIfType(leftDelimiter)) {
+void Parser::parseSequence(Expression & leftHandSide, const char name, Token::Type leftDelimiter1, Token::Type rightDelimiter1, Token::Type leftDelimiter2, Token::Type rightDelimiter2) {
+  bool delimiterTypeIsOne = popTokenIfType(leftDelimiter1);
+  if (!delimiterTypeIsOne && !popTokenIfType(leftDelimiter2)) {
     m_status = Status::Error; // Left delimiter missing.
   } else {
+    Token::Type rightDelimiter = delimiterTypeIsOne ? rightDelimiter1 : rightDelimiter2;
     Expression rank = parseUntil(rightDelimiter);
     if (m_status != Status::Progress) {
     } else if (!popTokenIfType(rightDelimiter)) {
@@ -424,48 +437,30 @@ void Parser::parseSpecialIdentifier(Expression & leftHandSide) {
     leftHandSide = Undefined::Builder();
   } else if (m_currentToken.compareTo(Unreal::Name()) == 0) {
     leftHandSide = Unreal::Builder();
-  } else if (m_currentToken.compareTo("u_") == 0 || m_currentToken.compareTo("v_") == 0 || m_currentToken.compareTo("w_") == 0) { // Special case for sequences (e.g. "u_{n}")
-    /* We now that m_currentToken.text()[0] is either 'u' or 'v', so we do not
-     * need to pass a code point to parseSequence. */
-    parseSequence(leftHandSide, m_currentToken.text()[0], Token::LeftBrace, Token::RightBrace);
-  } else if (m_currentToken.compareTo("u") == 0 || m_currentToken.compareTo("v") == 0|| m_currentToken.compareTo("w") == 0) { // Special case for sequences (e.g. "u(n)")
-    /* We now that m_currentToken.text()[0] is either 'u' or 'v', so we do not
-     * need to pass a code point to parseSequence. */
-    parseSequence(leftHandSide, m_currentToken.text()[0], Token::LeftParenthesis, Token::RightParenthesis);
-  } else if (m_currentToken.compareTo("log_") == 0) { // Special case for the log function (e.g. "log_{2}(8)")
-    if (!popTokenIfType(Token::LeftBrace)) {
-      m_status = Status::Error; // Left brace missing.
-    } else {
-      Expression base = parseUntil(Token::RightBrace);
-      if (m_status != Status::Progress) {
-      } else if (!popTokenIfType(Token::RightBrace)) {
-        m_status = Status::Error; // Right brace missing.
-      } else {
-        Expression parameter = parseFunctionParameters();
-        if (m_status != Status::Progress) {
-        } else if (parameter.numberOfChildren() != 1) {
-          m_status = Status::Error; // Unexpected number of many parameters.
-        } else {
-          leftHandSide = Logarithm::Builder(parameter.childAtIndex(0), base);
-        }
-      }
-    }
+  } else {
+    assert(m_currentToken.compareTo("u") == 0
+        || m_currentToken.compareTo("v") == 0
+        || m_currentToken.compareTo("w") == 0);
+    /* Special case for sequences (e.g. "u(n)", "u{n}", ...)
+     * We know that m_currentToken.text()[0] is either 'u', 'v' or 'w', so we do
+     * not need to pass a code point to parseSequence. */
+    parseSequence(leftHandSide, m_currentToken.text()[0], Token::LeftParenthesis, Token::RightParenthesis, Token::LeftBrace, Token::RightBrace);
   }
 }
 
-void Parser::parseCustomIdentifier(Expression & leftHandSide, const char * name, size_t length, bool symbolPlusParenthesesAreFunctions) {
+void Parser::parseCustomIdentifier(Expression & leftHandSide, const char * name, size_t length) {
   if (length >= SymbolAbstract::k_maxNameSize) {
     m_status = Status::Error; // Identifier name too long.
     return;
   }
   bool poppedParenthesisIsSystem = false;
 
-  /* If symbolPlusParenthesesAreFunctions is false, check the context: if the
+  /* If m_symbolPlusParenthesesAreFunctions is false, check the context: if the
    * identifier does not already exist as a function, interpret it as a symbol,
    * even if there are parentheses afterwards. */
 
   Context::SymbolAbstractType idType = Context::SymbolAbstractType::None;
-  if (m_context != nullptr && !symbolPlusParenthesesAreFunctions) {
+  if (m_context != nullptr && !m_symbolPlusParenthesesAreFunctions) {
     idType = m_context->expressionTypeForIdentifier(name, length);
     if (idType != Context::SymbolAbstractType::Function) {
       leftHandSide = Symbol::Builder(name, length);
@@ -513,7 +508,7 @@ void Parser::parseIdentifier(Expression & leftHandSide, Token::Type stoppingType
   } else if (IsSpecialIdentifierName(m_currentToken.text(), m_currentToken.length())) {
     parseSpecialIdentifier(leftHandSide);
   } else {
-    parseCustomIdentifier(leftHandSide, m_currentToken.text(), m_currentToken.length(), false);
+    parseCustomIdentifier(leftHandSide, m_currentToken.text(), m_currentToken.length());
   }
   isThereImplicitMultiplication();
 }

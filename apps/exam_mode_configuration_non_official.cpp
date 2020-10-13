@@ -2,12 +2,11 @@
 
 using namespace Poincare;
 
-constexpr Settings::SettingsMessageTree s_ledColorChildren[] = {Settings::SettingsMessageTree(I18n::Message::ColorRed), Settings::SettingsMessageTree(I18n::Message::ColorWhite), Settings::SettingsMessageTree(I18n::Message::ColorGreen), Settings::SettingsMessageTree(I18n::Message::ColorBlue), Settings::SettingsMessageTree(I18n::Message::ColorYellow), Settings::SettingsMessageTree(I18n::Message::ColorPurple), Settings::SettingsMessageTree(I18n::Message::ColorOrange)};
-constexpr Settings::SettingsMessageTree s_examModeMode[] = {Settings::SettingsMessageTree(I18n::Message::ExamModeModeStandard), Settings::SettingsMessageTree(I18n::Message::ExamModeModeNoSym), Settings::SettingsMessageTree(I18n::Message::ExamModeModeNoSymNoText)};
-constexpr Settings::SettingsMessageTree ExamModeConfiguration::s_modelExamChildren[] = {Settings::SettingsMessageTree(I18n::Message::LEDColor, s_ledColorChildren), Settings::SettingsMessageTree(I18n::Message::ExamModeMode, s_examModeMode), Settings::SettingsMessageTree(I18n::Message::ActivateExamMode)};
+constexpr Shared::SettingsMessageTree s_examModeMode[] = {Shared::SettingsMessageTree(I18n::Message::ExamModeModeStandard), Shared::SettingsMessageTree(I18n::Message::ExamModeModeNoSym), Shared::SettingsMessageTree(I18n::Message::ExamModeModeNoSymNoText)};
+constexpr Shared::SettingsMessageTree ExamModeConfiguration::s_modelExamChildren[] = {Shared::SettingsMessageTree(I18n::Message::ExamModeMode, s_examModeMode), Shared::SettingsMessageTree(I18n::Message::ActivateExamMode)};
 
 int ExamModeConfiguration::numberOfAvailableExamMode() {
-  return 3;
+  return 2;
 }
 
 GlobalPreferences::ExamMode ExamModeConfiguration::examModeAtIndex(int index) {
@@ -30,30 +29,16 @@ I18n::Message ExamModeConfiguration::examModeActivationWarningMessage(GlobalPref
 
 KDColor ExamModeConfiguration::examModeColor(GlobalPreferences::ExamMode mode) {
   assert(mode == GlobalPreferences::ExamMode::Standard || mode == GlobalPreferences::ExamMode::NoSym || mode == GlobalPreferences::ExamMode::NoSymNoText);
-  Preferences * preferences = Preferences::sharedPreferences();
-
-  switch((int) preferences->colorOfLED()) {
-    case 1:
-      return KDColorWhite;
-    case 2:
-      return KDColorGreen;
-    case 3:
-      return KDColorBlue;
-    case 4:
-      return KDColorYellow;
-    case 5:
-      return KDColorPurple;
-    case 6:
-      return KDColorOrange;
-    default:
-      return KDColorRed;
-  }
+  return KDColorRed;
 }
 
-bool ExamModeConfiguration::appIsForbiddenInExamMode(I18n::Message appName, GlobalPreferences::ExamMode mode) {
+bool ExamModeConfiguration::appIsForbiddenInExamMode(App::Descriptor::ExaminationLevel appExaminationLevel, GlobalPreferences::ExamMode mode) {
+  if (mode == GlobalPreferences::ExamMode::NoSymNoText) {
+    return appExaminationLevel == App::Descriptor::ExaminationLevel::Basic;
+  }
   return false;
 }
 
 bool ExamModeConfiguration::exactExpressionsAreForbidden(GlobalPreferences::ExamMode mode) {
-  return false;
+  return mode == GlobalPreferences::ExamMode::NoSymNoText ? true : false;
 }

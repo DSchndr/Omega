@@ -7,13 +7,12 @@
 #include <string.h>
 #include <cmath>
 #include <assert.h>
+#include <algorithm>
 
 using namespace Ion;
 using namespace Poincare;
 
 namespace Shared {
-
-static inline int maxInt(int x, int y) { return x > y ? x : y; }
 
 ExpressionModel::ExpressionModel() :
   m_expression(),
@@ -24,13 +23,19 @@ ExpressionModel::ExpressionModel() :
 
 void ExpressionModel::text(const Storage::Record * record, char * buffer, size_t bufferSize, CodePoint symbol) const {
   Expression e = expressionClone(record);
-  if (e.isUninitialized() && bufferSize > 0) {
-    buffer[0] = 0;
-  } else {
-    if (symbol != 0 && !e.isUninitialized()) {
-      e = e.replaceSymbolWithExpression(Symbol::Builder(UCodePointUnknown), Symbol::Builder(symbol));
+  if (e.isUninitialized()) {
+    if (bufferSize > 0) {
+      buffer[0] = 0;
     }
-    e.serialize(buffer, bufferSize);
+    return;
+  }
+  if (symbol != 0) {
+    e = e.replaceSymbolWithExpression(Symbol::Builder(UCodePointUnknown), Symbol::Builder(symbol));
+  }
+  int serializedSize = e.serialize(buffer, bufferSize);
+  if (serializedSize >= (int)bufferSize - 1) {
+    // It is very likely that the buffer is overflowed
+    buffer[0] = 0;
   }
 }
 
@@ -120,7 +125,7 @@ Ion::Storage::Record::ErrorStatus ExpressionModel::setExpressionContent(Ion::Sto
   size_t newDataSize = previousDataSize - previousExpressionSize + newExpressionSize;
   void * expAddress = expressionAddress(record);
   // Update size of record to maximal size between previous and new data
-  newData.size = maxInt(previousDataSize, newDataSize);
+  newData.size = std::max(previousDataSize, newDataSize);
   Ion::Storage::Record::ErrorStatus error = record->setValue(newData);
   if (error != Ion::Storage::Record::ErrorStatus::None) {
     assert(error == Ion::Storage::Record::ErrorStatus::NotEnoughSpaceAvailable);

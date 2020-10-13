@@ -1,4 +1,5 @@
 #include "illustrated_list_controller.h"
+#include <poincare/exception_checkpoint.h>
 #include <poincare/symbol.h>
 #include "../app.h"
 
@@ -8,8 +9,8 @@ namespace Calculation {
 
 /* Illustrated list controller */
 
-IllustratedListController::IllustratedListController(Responder * parentResponder, EditExpressionController * editExpressionController) :
-  ListController(parentResponder, editExpressionController, this),
+IllustratedListController::IllustratedListController(EditExpressionController * editExpressionController) :
+  ListController(editExpressionController, this),
   m_additionalCalculationCells{}
 {
   for (int i = 0; i < k_maxNumberOfAdditionalCalculations; i++) {
@@ -26,7 +27,7 @@ void IllustratedListController::didEnterResponderChain(Responder * previousFirst
 }
 
 void IllustratedListController::viewDidDisappear() {
-  StackViewController::viewDidDisappear();
+  ListController::viewDidDisappear();
   // Reset the context as it was before displaying the IllustratedListController
   Poincare::Context * context = App::app()->localContext();
   if (m_savedExpression.isUninitialized()) {
@@ -42,6 +43,10 @@ void IllustratedListController::viewDidDisappear() {
     Poincare::Symbol s = Poincare::Symbol::Builder(expressionSymbol());
     context->setExpressionForSymbolAbstract(m_savedExpression, s);
   }
+  // Reset cell memoization to avoid taking extra space in the pool
+  for (int i = 0; i < k_maxNumberOfAdditionalCalculations; i++) {
+     m_additionalCalculationCells[i].resetMemoization();
+   }
 }
 
 int IllustratedListController::numberOfRows() const {
@@ -74,7 +79,8 @@ KDCoordinate IllustratedListController::rowHeight(int j) {
     return 0;
   }
   Shared::ExpiringPointer<Calculation> calculation = m_calculationStore.calculationAtIndex(calculationIndex);
-  return calculation->height(App::app()->localContext(), true, true) + 2 * Metric::CommonSmallMargin + Metric::CellSeparatorThickness;
+  constexpr bool expanded = true;
+  return calculation->height(expanded) + Metric::CellSeparatorThickness;
 }
 
 int IllustratedListController::typeAtLocation(int i, int j) {
@@ -83,7 +89,6 @@ int IllustratedListController::typeAtLocation(int i, int j) {
 
 void IllustratedListController::willDisplayCellForIndex(HighlightCell * cell, int index) {
   if (index == 0) {
-    // TODO ?
     return;
   }
   Poincare::Context * context = App::app()->localContext();
@@ -91,7 +96,6 @@ void IllustratedListController::willDisplayCellForIndex(HighlightCell * cell, in
   Calculation * c = m_calculationStore.calculationAtIndex(index-1).pointer();
   myCell->setCalculation(c);
   myCell->setDisplayCenter(c->displayOutput(context) != Calculation::DisplayOutput::ApproximateOnly);
-  //myCell->setHighlighted(myCell->isHighlighted()); //TODO??
 }
 
 void IllustratedListController::tableViewDidChangeSelection(SelectableTableView * t, int previousSelectedCellX, int previousSelectedCellY, bool withinTemporarySelection) {

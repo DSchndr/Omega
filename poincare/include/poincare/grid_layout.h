@@ -52,7 +52,7 @@ public:
     m_numberOfColumns = 0;
   }
 #if POINCARE_TREE_LOG
-  virtual void logNodeName(std::ostream & stream) const override {
+  void logNodeName(std::ostream & stream) const override {
     stream << "GridLayout";
   }
 #endif
@@ -95,9 +95,7 @@ public:
   static GridLayout Builder() { return TreeHandle::NAryBuilder<GridLayout,GridLayoutNode>(); }
 
   void setDimensions(int rows, int columns);
-  void addChildAtIndex(Layout l, int index, int currentNumberOfChildren, LayoutCursor * cursor) {
-    Layout::addChildAtIndex(l, index, currentNumberOfChildren, cursor);
-  }
+  using Layout::addChildAtIndex;
   int numberOfRows() const { return node()->numberOfRows(); }
   int numberOfColumns() const { return node()->numberOfColumns(); }
 private:

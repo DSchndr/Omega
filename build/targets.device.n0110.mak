@@ -19,3 +19,4 @@ $(BUILD_DIR)/test.external_flash.write.$(EXE): $(BUILD_DIR)/quiz/src/test_ion_ex
 	    sleep 2; \
 	fi
 	$(Q) $(PYTHON) build/device/dfu.py -u $(word 1,$^)
+

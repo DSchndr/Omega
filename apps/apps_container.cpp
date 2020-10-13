@@ -37,7 +37,7 @@ AppsContainer::AppsContainer() :
   m_usbConnectedSnapshot()
 {
   m_emptyBatteryWindow.setFrame(KDRect(0, 0, Ion::Display::Width, Ion::Display::Height), false);
-#if __EMSCRIPTEN__
+// #if __EMSCRIPTEN__
   /* AppsContainer::poincareCircuitBreaker uses Ion::Keyboard::scan(), which
    * calls emscripten_sleep. If we set the poincare circuit breaker, we would
    * need to whitelist all the methods that might be in the call stack when
@@ -47,9 +47,13 @@ AppsContainer::AppsContainer() :
    * quite painy to maintain).
    * We just remove the circuit breaker for now.
    * TODO: Put the Poincare circuit breaker back on epsilon's web emulator */
-#else
+
+  /*
+   * This can be run in Omega, since it uses WebASM.
+   */
+// #else
   Poincare::Expression::SetCircuitBreaker(AppsContainer::poincareCircuitBreaker);
-#endif
+// #endif
   Ion::Storage::sharedStorage()->setDelegate(this);
 }
 
@@ -88,7 +92,7 @@ MathToolbox * AppsContainer::mathToolbox() {
   return &m_mathToolbox;
 }
 
-VariableBoxController * AppsContainer::variableBoxController() {
+MathVariableBoxController * AppsContainer::variableBoxController() {
   return &m_variableBoxController;
 }
 
@@ -216,6 +220,10 @@ bool AppsContainer::processEvent(Ion::Events::Event event) {
   }
   if (event == Ion::Events::Home || event == Ion::Events::Back) {
     switchTo(appSnapshotAtIndex(0));
+    return true;
+  }
+  if (event == Ion::Events::ShiftHome) {
+    switchTo(appSnapshotAtIndex(1));
     return true;
   }
   if (event == Ion::Events::OnOff) {
@@ -366,30 +374,7 @@ void AppsContainer::redrawWindow(bool force) {
 void AppsContainer::activateExamMode(GlobalPreferences::ExamMode examMode) {
   assert(examMode != GlobalPreferences::ExamMode::Off && examMode != GlobalPreferences::ExamMode::Unknown);
   reset();
-  Preferences * preferences = Preferences::sharedPreferences();
-  switch ((int)preferences->colorOfLED()) {
-    case 0:
-      Ion::LED::setColor(KDColorRed);
-      break;
-    case 1:
-      Ion::LED::setColor(KDColorWhite);
-      break;
-    case 2:
-      Ion::LED::setColor(KDColorGreen);
-      break;
-    case 3:
-      Ion::LED::setColor(KDColorBlue);
-      break;
-    case 4:
-      Ion::LED::setColor(KDColorYellow);
-      break;
-    case 5:
-      Ion::LED::setColor(KDColorPurple);
-      break;
-    case 6:
-      Ion::LED::setColor(KDColorOrange);
-      break;
-  }
+  Ion::LED::setColor(KDColorRed);
   /* The Dutch exam mode LED is supposed to be orange but we can only make
    * blink "pure" colors: with RGB leds on or off (as the PWM is used for
    * blinking). The closest "pure" color is Yellow. Moreover, Orange LED is

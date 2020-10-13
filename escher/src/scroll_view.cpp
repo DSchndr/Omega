@@ -4,9 +4,7 @@
 extern "C" {
 #include <assert.h>
 }
-
-static inline KDCoordinate minCoordinate(KDCoordinate x, KDCoordinate y) { return x < y ? x : y; }
-static inline KDCoordinate maxCoordinate(KDCoordinate x, KDCoordinate y) { return x > y ? x : y; }
+#include <algorithm>
 
 ScrollView::ScrollView(View * contentView, ScrollViewDataSource * dataSource) :
   View(),
@@ -55,9 +53,16 @@ void ScrollView::scrollToContentPoint(KDPoint p, bool allowOverscroll) {
   if (!allowOverscroll && !m_contentView->bounds().contains(p)) {
     return;
   }
+
+  KDRect visibleRect = visibleContentRect();
+
+  if (visibleRect.width() < 0 || visibleRect.height() < 0) {
+    return;
+  }
+
   KDCoordinate offsetX = 0;
   KDCoordinate offsetY = 0;
-  KDRect visibleRect = visibleContentRect();
+
   if (visibleRect.left() > p.x()) {
     offsetX = p.x() - visibleRect.left();
   }
@@ -76,13 +81,46 @@ void ScrollView::scrollToContentPoint(KDPoint p, bool allowOverscroll) {
 
   // Handle cases when the size of the view has decreased.
   setContentOffset(KDPoint(
-    minCoordinate(contentOffset().x(), maxCoordinate(minimalSizeForOptimalDisplay().width() - bounds().width(), 0)),
-    minCoordinate(contentOffset().y(), maxCoordinate(minimalSizeForOptimalDisplay().height() - bounds().height(), 0))));
+    std::min(
+      contentOffset().x(),
+      std::max<KDCoordinate>(
+        minimalSizeForOptimalDisplay().width() - bounds().width(),
+        KDCoordinate(0))),
+    std::min(
+      contentOffset().y(),
+      std::max<KDCoordinate>(
+        minimalSizeForOptimalDisplay().height() - bounds().height(),
+        KDCoordinate(0)))));
 }
 
 void ScrollView::scrollToContentRect(KDRect rect, bool allowOverscroll) {
-  scrollToContentPoint(rect.topLeft(), allowOverscroll);
-  scrollToContentPoint(rect.bottomRight(), allowOverscroll);
+  KDPoint tl  = rect.topLeft();
+  KDPoint br  = rect.bottomRight();
+  KDRect visibleRect = visibleContentRect();
+  /* We first check that we can display the whole rect. If we can't, we focus
+   * the scroll to the closest part of the rect. */
+  if (visibleRect.height() < rect.height()) {
+    // The visible rect is too small to display 'rect'
+    if (rect.top() >= visibleRect.top()) {
+      // We scroll to display the top part of rect
+      br = KDPoint(br.x(), rect.top() + visibleRect.height());
+    } else {
+      // We scroll to display the bottom part of rect
+      tl = KDPoint(tl.x(), rect.bottom() - visibleRect.height());
+    }
+  }
+  if (visibleRect.width() < rect.width()) {
+    // The visible rect is too small to display 'rect'
+    if (rect.left() >= visibleRect.left()) {
+      // We scroll to display the left part of rect
+      br = KDPoint(rect.left() + visibleRect.width(), br.y());
+    } else {
+      // We scroll to display the right part of rect
+      tl = KDPoint(rect.right() - visibleRect.width(), tl.y());
+    }
+  }
+  scrollToContentPoint(tl, allowOverscroll);
+  scrollToContentPoint(br, allowOverscroll);
 }
 
 KDRect ScrollView::visibleContentRect() {
@@ -94,6 +132,9 @@ KDRect ScrollView::visibleContentRect() {
 }
 
 void ScrollView::layoutSubviews(bool force) {
+  if (bounds().isEmpty()) {
+    return;
+  }
   KDRect r1 = KDRectZero;
   KDRect r2 = KDRectZero;
   KDRect innerFrame = decorator()->layoutIndicators(minimalSizeForOptimalDisplay(), contentOffset(), bounds(), &r1, &r2, force);

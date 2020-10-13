@@ -37,24 +37,16 @@ public:
     Radian = 1,
     Gradian = 2
   };
-  enum class LEDColor : uint8_t {
-    Red = 0,
-    White = 1,
-    Green = 2,
-    Blue = 3,
-    Yellow = 4,
-    Purple = 5,
-    Orange = 6,
-  };
   enum class SymbolMultiplication : uint8_t {
     Cross = 0,
     MiddleDot = 1,
     Star = 2,
     Auto = 3
   };
-  enum class ResultDisplay : uint8_t {
+  enum class SymbolFunction : uint8_t {
     Default = 0,
-    Compact = 1
+    ArgDefault = 1,
+    Arg = 2   
   };
   enum class PythonFont : uint8_t {
     Large = 0,
@@ -72,12 +64,10 @@ public:
   void setComplexFormat(Preferences::ComplexFormat complexFormat) { m_complexFormat = complexFormat; }
   uint8_t numberOfSignificantDigits() const { return m_numberOfSignificantDigits; }
   void setNumberOfSignificantDigits(uint8_t numberOfSignificantDigits) { m_numberOfSignificantDigits = numberOfSignificantDigits; }
-  LEDColor colorOfLED() const { return m_colorOfLED; }
-  void setColorOfLED(LEDColor color) { m_colorOfLED = color; }
-  SymbolMultiplication symbolofMultiplication() const { return m_symbolMultiplication; }
-  void setSymbolMultiplication(SymbolMultiplication symbolofMultiplication) { m_symbolMultiplication = symbolofMultiplication; }
-  ResultDisplay resultDisplay() const { return m_resultDisplay; }
-  void setResultDisplay(ResultDisplay resultDisplay) { m_resultDisplay = resultDisplay; }
+  SymbolMultiplication symbolOfMultiplication() const { return m_symbolMultiplication; }
+  void setSymbolMultiplication(SymbolMultiplication symbolOfMultiplication) { m_symbolMultiplication = symbolOfMultiplication; }
+  SymbolFunction symbolOfFunction() const { return m_symbolFunction; }
+  void setSymbolOfFunction(SymbolFunction symbolOfFunction) { m_symbolFunction = symbolOfFunction; }
   PythonFont pythonFont() const { return m_pythonFont; }
   void setPythonFont(PythonFont pythonFont) { m_pythonFont = pythonFont; }
   const KDFont * KDPythonFont() const { return (m_pythonFont == PythonFont::Small) ? KDFont::SmallFont : KDFont::LargeFont; }
@@ -87,9 +77,8 @@ private:
   EditionMode m_editionMode;
   ComplexFormat m_complexFormat;
   uint8_t m_numberOfSignificantDigits;
-  LEDColor m_colorOfLED;
   SymbolMultiplication m_symbolMultiplication;
-  ResultDisplay m_resultDisplay;
+  SymbolFunction m_symbolFunction;
   PythonFont m_pythonFont;
 };
 

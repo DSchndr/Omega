@@ -14,8 +14,8 @@ I18n::Message App::Descriptor::upperName() {
   return I18n::Message::SolverAppCapital;
 }
 
-int App::Descriptor::examinationLevel() {
-  return App::Descriptor::StrictExaminationLevel;
+App::Descriptor::ExaminationLevel App::Descriptor::examinationLevel() {
+  return App::Descriptor::ExaminationLevel::Strict;
 }
 
 const Image * App::Descriptor::icon() {
@@ -60,7 +60,7 @@ App::App(Snapshot * snapshot) :
 
 void App::willBecomeInactive() {
   if (m_modalViewController.isDisplayingModal()) {
-    m_modalViewController.dismissModalViewController();
+    m_modalViewController.dismissModalViewController(true);
   }
   if (inputViewController()->isDisplayingModal()) {
     inputViewController()->abortEditionAndDismiss();

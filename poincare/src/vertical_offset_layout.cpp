@@ -5,10 +5,9 @@
 #include <poincare/right_parenthesis_layout.h>
 #include <string.h>
 #include <assert.h>
+#include <algorithm>
 
 namespace Poincare {
-
-static inline int minInt(int x, int y) { return x < y ? x : y; }
 
 void VerticalOffsetLayoutNode::moveCursorLeft(LayoutCursor * cursor, bool * shouldRecomputeLayout, bool forSelection) {
   if (cursor->layoutNode() == indiceLayout()
@@ -156,18 +155,16 @@ int VerticalOffsetLayoutNode::serialize(char * buffer, int bufferSize, Preferenc
     if (bufferSize == 1) {
       return 0;
     }
-    // If the layout is a subscript, write "_{indice}"
-    int numberOfChar = SerializationHelper::CodePoint(buffer, bufferSize, '_');
-    if (numberOfChar >= bufferSize-1) { return bufferSize-1; }
 
-    numberOfChar += SerializationHelper::CodePoint(buffer+numberOfChar, bufferSize-numberOfChar, '{');
+    // If the layout is a subscript, write "{indice}"
+    int numberOfChar = SerializationHelper::CodePoint(buffer, bufferSize, '{');
     if (numberOfChar >= bufferSize-1) { return bufferSize-1; }
 
     numberOfChar += const_cast<VerticalOffsetLayoutNode *>(this)->indiceLayout()->serialize(buffer+numberOfChar, bufferSize-numberOfChar, floatDisplayMode, numberOfSignificantDigits);
     if (numberOfChar >= bufferSize-1) { return bufferSize-1; }
 
     numberOfChar += SerializationHelper::CodePoint(buffer+numberOfChar, bufferSize-numberOfChar, '}');
-    return minInt(numberOfChar, bufferSize-1);
+    return std::min(numberOfChar, bufferSize-1);
   }
 
   assert(m_position == Position::Superscript);
@@ -179,7 +176,7 @@ int VerticalOffsetLayoutNode::serialize(char * buffer, int bufferSize, Preferenc
   numberOfChar += const_cast<VerticalOffsetLayoutNode *>(this)->indiceLayout()->serialize(buffer+numberOfChar, bufferSize-numberOfChar, floatDisplayMode, numberOfSignificantDigits);
   if (numberOfChar >= bufferSize-1) { return bufferSize-1; }
   numberOfChar += SerializationHelper::CodePoint(buffer+numberOfChar, bufferSize-numberOfChar, UCodePointRightSystemParenthesis);
-  return minInt(numberOfChar, bufferSize-1);
+  return std::min(numberOfChar, bufferSize-1);
 }
 
 KDSize VerticalOffsetLayoutNode::computeSize() {

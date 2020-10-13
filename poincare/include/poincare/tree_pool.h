@@ -7,7 +7,6 @@
 #include <string.h>
 #include <new>
 #if POINCARE_TREE_LOG
-#include <ostream>
 #include <iostream>
 #endif
 
@@ -27,7 +26,7 @@ public:
 
   // Node
   TreeNode * node(uint16_t identifier) const {
-    assert(identifier >= 0 && identifier < MaxNumberOfNodes);
+    assert(TreeNode::IsValidIdentifier(identifier) && identifier < MaxNumberOfNodes);
     if (m_nodeForIdentifierOffset[identifier] != UINT16_MAX) {
       return const_cast<TreeNode *>(reinterpret_cast<const TreeNode *>(m_alignedBuffer + m_nodeForIdentifierOffset[identifier]));
     }
@@ -125,7 +124,7 @@ private:
       }
     }
     void push(uint16_t i) {
-      assert(m_currentIndex >= 0 && m_currentIndex < MaxNumberOfNodes);
+      assert(TreeNode::IsValidIdentifier(m_currentIndex) && m_currentIndex < MaxNumberOfNodes);
       m_availableIdentifiers[m_currentIndex++] = i;
     }
     uint16_t pop() {

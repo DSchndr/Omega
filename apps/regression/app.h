@@ -17,7 +17,7 @@ public:
   public:
     I18n::Message name() override;
     I18n::Message upperName() override;
-    int examinationLevel() override;
+    App::Descriptor::ExaminationLevel examinationLevel() override;
     const Image * icon() override;
   };
   class Snapshot : public ::App::Snapshot, public TabViewDataSource {
@@ -31,6 +31,7 @@ public:
     int * graphSelectedDotIndex() { return &m_graphSelectedDotIndex; }
     int * selectedSeriesIndex() { return &m_selectedSeriesIndex; }
     uint32_t * modelVersion() { return &m_modelVersion; }
+    uint32_t * previousModelsVersions() { return m_store.seriesChecksum(); }
     uint32_t * rangeVersion() { return &m_rangeVersion; }
   private:
     void tidy() override;

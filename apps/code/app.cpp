@@ -14,8 +14,8 @@ I18n::Message App::Descriptor::upperName() {
   return I18n::Message::CodeAppCapital;
 }
 
-int App::Descriptor::examinationLevel() {
-  return App::Descriptor::BasicExaminationLevel;
+App::Descriptor::ExaminationLevel App::Descriptor::examinationLevel() {
+  return App::Descriptor::ExaminationLevel::Basic;
 }
 
 const Image * App::Descriptor::icon() {
@@ -25,6 +25,7 @@ const Image * App::Descriptor::icon() {
 App::Snapshot::Snapshot() :
 #if EPSILON_GETOPT
   m_lockOnConsole(false),
+  m_hasBeenWiped(false),
 #endif
   m_scriptStore()
 {
@@ -50,7 +51,11 @@ bool App::Snapshot::lockOnConsole() const {
 
 void App::Snapshot::setOpt(const char * name, const char * value) {
   if (strcmp(name, "script") == 0) {
-    m_scriptStore.deleteAllScripts();
+    if (!m_hasBeenWiped) {
+      m_hasBeenWiped = true;
+      m_scriptStore.deleteAllScripts();
+    }
+  
     char * separator = const_cast<char *>(UTF8Helper::CodePointSearch(value, ':'));
     if (*separator == 0) {
       return;
@@ -65,7 +70,7 @@ void App::Snapshot::setOpt(const char * name, const char * value) {
     const char * scriptContent = separator;
     Code::ScriptTemplate script(scriptName, scriptContent);
     m_scriptStore.addScriptFromTemplate(&script);
-    m_scriptStore.scriptNamed(scriptName).toggleImportationStatus(); // set Importation Status to 1
+    ScriptStore::ScriptNamed(scriptName).toggleAutoimportationStatus(); // set Importation Status to 1
     return;
   }
   if (strcmp(name, "lock-on-console") == 0) {

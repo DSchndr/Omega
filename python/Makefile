@@ -1,6 +1,7 @@
 SFLAGS += -Ipython/src
 SFLAGS += -Ipython/port
 SFLAGS += -I$(BUILD_DIR)/python/port
+SFLAGS += -DEPSILON_VERSION="$(EPSILON_VERSION)" -DOMEGA_VERSION="$(OMEGA_VERSION)"
 
 # How to maintain this Makefile
 # - Copy PY_CORE_O_BASENAME from py.mk into py_src
@@ -13,6 +14,7 @@ py_src = $(addprefix python/src/py/,\
   nlrx86.c \
   nlrx64.c \
   nlrthumb.c \
+  nlrpowerpc.c \
   nlrxtensa.c \
   nlrsetjmp.c \
   malloc.c \
@@ -43,6 +45,7 @@ py_src = $(addprefix python/src/py/,\
   asmxtensa.c \
   emitnxtensa.c \
   emitinlinextensa.c \
+  emitnxtensawin.c \
   formatfloat.c \
   parsenumbase.c \
   parsenum.c \
@@ -52,9 +55,11 @@ py_src = $(addprefix python/src/py/,\
   runtime_utils.c \
   scheduler.c \
   nativeglue.c \
+  ringbuf.c \
   stackctrl.c \
   argcheck.c \
   warning.c \
+  profile.c \
   map.c \
   obj.c \
   objarray.c \
@@ -132,10 +137,20 @@ port_src += $(addprefix python/port/,\
   helpers.c \
   mod/ion/modion.cpp \
   mod/ion/modion_table.cpp \
+  mod/ion/file.cpp \
   mod/kandinsky/modkandinsky.cpp \
   mod/kandinsky/modkandinsky_table.c \
+  mod/matplotlib/modmatplotlib.cpp \
+  mod/matplotlib/modmatplotlib_table.c \
+  mod/matplotlib/pyplot/modpyplot.cpp \
+  mod/matplotlib/pyplot/modpyplot_table.c \
+  mod/matplotlib/pyplot/plot_controller.cpp \
+  mod/matplotlib/pyplot/plot_store.cpp \
+  mod/matplotlib/pyplot/plot_view.cpp \
   mod/time/modtime.c \
   mod/time/modtime_table.c \
+  mod/os/modos.cpp \
+  mod/os/modos_table.c \
   mod/turtle/modturtle.cpp \
   mod/turtle/modturtle_table.c \
   mod/turtle/turtle.cpp \
@@ -176,11 +191,20 @@ $(eval $(call rule_for, \
   QSTRDAT, \
   python/port/genhdr/qstrdefs.generated.h, \
   python/port/genhdr/qstrdefs.in.h, \
-  $$(PYTHON) python/src/py/makeqstrdata.py $$< > $$@ \
+  $$(PYTHON) python/src/py/makeqstrdata.py $$< > $$@, \
+  global \
 ))
 
 $(call object_for,$(python_src)): $(BUILD_DIR)/python/port/genhdr/qstrdefs.generated.h
 
 tests_src += $(addprefix python/test/,\
-  mandelbrot.cpp \
+  basics.cpp \
+  execution_environment.cpp \
+  ion.cpp \
+  kandinsky.cpp \
+  math.cpp \
+  random.cpp \
+  time.cpp \
+  turtle.cpp \
+  matplotlib.cpp \
 )

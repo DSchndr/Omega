@@ -5,7 +5,7 @@
 namespace Shared {
 
 ZoomParameterController::ZoomParameterController(Responder * parentResponder, InteractiveCurveViewRange * interactiveRange, CurveView * curveView) :
-  ViewController(parentResponder),
+  ZoomAndPanCurveViewController(parentResponder),
   m_contentView(curveView),
   m_interactiveRange(interactiveRange)
 {
@@ -13,45 +13,6 @@ ZoomParameterController::ZoomParameterController(Responder * parentResponder, In
 
 const char * ZoomParameterController::title() {
   return I18n::translate(I18n::Message::Zoom);
-}
-
-View * ZoomParameterController::view() {
-  return &m_contentView;
-}
-
-bool ZoomParameterController::handleEvent(Ion::Events::Event event) {
-  if (event == Ion::Events::Plus) {
-    m_interactiveRange->zoom(2.0f/3.0f, m_interactiveRange->xCenter(), m_interactiveRange->yCenter());
-    m_contentView.curveView()->reload();
-    return true;
-  }
-  if (event == Ion::Events::Minus) {
-    m_interactiveRange->zoom(3.0f/2.0f, m_interactiveRange->xCenter(), m_interactiveRange->yCenter());
-    m_contentView.curveView()->reload();
-    return true;
-  }
-  if (event == Ion::Events::Up) {
-    m_interactiveRange->panWithVector(0.0f, m_interactiveRange->yGridUnit());
-    m_contentView.curveView()->reload();
-    return true;
-  }
-  if (event == Ion::Events::Down) {
-    m_interactiveRange->panWithVector(0.0f, -m_interactiveRange->yGridUnit());
-    m_contentView.curveView()->reload();
-    return true;
-  }
-  if (event == Ion::Events::Left) {
-    m_interactiveRange->panWithVector(-m_interactiveRange->xGridUnit(), 0.0f);
-    m_contentView.curveView()->reload();
-    return true;
-  }
-  if (event == Ion::Events::Right) {
-    m_interactiveRange->panWithVector(m_interactiveRange->xGridUnit(), 0.0f);
-    m_contentView.curveView()->reload();
-    return true;
-  }
-
-  return false;
 }
 
 void ZoomParameterController::viewWillAppear() {
@@ -97,10 +58,13 @@ int ZoomParameterController::ContentView::numberOfSubviews() const {
 
 View * ZoomParameterController::ContentView::subviewAtIndex(int index) {
   assert(index >= 0 && index < 2);
+  /* The order of subviews matters here: redrawing curve view can be long and
+   * if it was redraw before the legend view, you could see noise when
+   * switching the device on and off. */
   if (index == 0) {
-    return m_curveView;
+    return &m_legendView;
   }
-  return &m_legendView;
+  return m_curveView;
 }
 
 void ZoomParameterController::ContentView::layoutSubviews(bool force) {

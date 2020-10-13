@@ -18,7 +18,7 @@ public:
   public:
     I18n::Message name() override;
     I18n::Message upperName() override;
-    int examinationLevel() override;
+    App::Descriptor::ExaminationLevel examinationLevel() override;
     const Image * icon() override;
   };
   class Snapshot : public ::App::Snapshot {
@@ -34,6 +34,7 @@ public:
   private:
 #if EPSILON_GETOPT
     bool m_lockOnConsole;
+    bool m_hasBeenWiped;
 #endif
     ScriptStore m_scriptStore;
   };
@@ -51,6 +52,7 @@ public:
   }
   StackViewController * stackViewController() { return &m_codeStackViewController; }
   ConsoleController * consoleController() { return &m_consoleController; }
+  MenuController * menuController() { return &m_menuController; }
 
   /* Responder */
   bool handleEvent(Ion::Events::Event event) override;

@@ -19,7 +19,6 @@ ExamModeController::ExamModeController(Responder * parentResponder) :
   m_cell{},
   m_ledController(this),
   m_examModeModeController(this),
-  m_ledColorCell(KDFont::LargeFont, KDFont::SmallFont),
   m_examModeCell(KDFont::LargeFont, KDFont::SmallFont)
 {
   for (int i = 0; i < k_maxNumberOfCells; i++) {
@@ -30,17 +29,13 @@ ExamModeController::ExamModeController(Responder * parentResponder) :
 
 bool ExamModeController::handleEvent(Ion::Events::Event event) {
   if (event == Ion::Events::OK || event == Ion::Events::EXE || event == Ion::Events::Right) {
-    if (m_messageTreeModel->children(selectedRow())->label() == I18n::Message::LEDColor) {
-      (&m_ledController)->setMessageTreeModel(m_messageTreeModel->children(selectedRow()));
-      StackViewController * stack = stackController();
-      stack->push(&m_ledController);
-      return true;
-    } else if (m_messageTreeModel->children(selectedRow())->label() == I18n::Message::ExamModeMode) {
-      (&m_examModeModeController)->setMessageTreeModel(m_messageTreeModel->children(selectedRow()));
+    if (m_messageTreeModel->childAtIndex(selectedRow())->label() == I18n::Message::ExamModeMode) {
+      (&m_examModeModeController)->setMessageTreeModel(m_messageTreeModel->childAtIndex(selectedRow()));
       StackViewController * stack = stackController();
       stack->push(&m_examModeModeController);
       return true;
-    } else {
+    } 
+    else {
       AppsContainer::sharedAppsContainer()->displayExamModePopUp(examMode());
       return true;
     }
@@ -73,10 +68,7 @@ int ExamModeController::numberOfRows() const {
 HighlightCell * ExamModeController::reusableCell(int index, int type) {
   assert(type == 0);
   assert(index >= 0  && index < 3);
-  if (m_messageTreeModel->children(index)->label() == I18n::Message::LEDColor) {
-    return &m_ledColorCell;
-  }
-  if (m_messageTreeModel->children(index)->label() == I18n::Message::ExamModeMode) {
+  if (m_messageTreeModel->childAtIndex(index)->label() == I18n::Message::ExamModeMode) {
     return &m_examModeCell;
   }
   return &m_cell[index];
@@ -93,20 +85,15 @@ void ExamModeController::willDisplayCellForIndex(HighlightCell * cell, int index
   }
   Preferences * preferences = Preferences::sharedPreferences();
   GenericSubController::willDisplayCellForIndex(cell, index);
-  I18n::Message thisLabel = m_messageTreeModel->children(index)->label();
+  I18n::Message thisLabel = m_messageTreeModel->childAtIndex(index)->label();
 
   if (GlobalPreferences::sharedGlobalPreferences()->isInExamMode() && (thisLabel == I18n::Message::ActivateExamMode || thisLabel == I18n::Message::ExamModeActive)) {
     MessageTableCell * myCell = (MessageTableCell *)cell;
     myCell->setMessage(I18n::Message::ExamModeActive);
   }
-  if (thisLabel == I18n::Message::LEDColor) {
-    MessageTableCellWithChevronAndMessage * myTextCell = (MessageTableCellWithChevronAndMessage *)cell;
-    I18n::Message message = (I18n::Message) m_messageTreeModel->children(index)->children((int)preferences->colorOfLED())->label();
-    myTextCell->setSubtitle(message);
-  }
   if (thisLabel == I18n::Message::ExamModeMode) {
     MessageTableCellWithChevronAndMessage * myTextCell = (MessageTableCellWithChevronAndMessage *)cell;
-    I18n::Message message = (I18n::Message) m_messageTreeModel->children(index)->children((uint8_t)GlobalPreferences::sharedGlobalPreferences()->tempExamMode() - 1)->label();
+    I18n::Message message = (I18n::Message) m_messageTreeModel->childAtIndex(index)->childAtIndex((uint8_t)GlobalPreferences::sharedGlobalPreferences()->tempExamMode() - 1)->label();
     myTextCell->setSubtitle(message);
   }
 }

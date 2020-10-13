@@ -10,9 +10,10 @@ namespace Calculation {
 
 class ExpressionsListController : public ListController {
 public:
-  ExpressionsListController(Responder * parentResponder, EditExpressionController * editExpressionController);
+  ExpressionsListController(EditExpressionController * editExpressionController);
 
   // Responder
+  void viewDidDisappear() override;
   void didEnterResponderChain(Responder * previousFirstResponder) override;
 
   //ListViewDataSource
@@ -27,7 +28,7 @@ public:
 
 protected:
   constexpr static int k_maxNumberOfCells = 4;
-  virtual int textAtIndex(char * buffer, size_t bufferSize, int index) override;
+  int textAtIndex(char * buffer, size_t bufferSize, int index) override;
   Poincare::Expression m_expression;
   // Memoization of layouts
   mutable Poincare::Layout m_layouts[k_maxNumberOfCells];
