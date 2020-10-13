@@ -1,9 +1,10 @@
 #include "app.h"
-#include "../apps_container.h"
 #include "rpi_icon.h"
-#include "../i18n.h"
 #include <ion/console.h>
 #include <ion/rpi.h>
+
+#include <apps/i18n.h>
+#include <apps/apps_container.h>
 
 namespace Rpi {
 
@@ -17,6 +18,10 @@ I18n::Message App::Descriptor::upperName() {
 
 const Image * App::Descriptor::icon() {
   return ImageStore::RpiIcon;
+}
+
+App::Descriptor::ExaminationLevel App::Descriptor::examinationLevel() {
+  return App::Descriptor::ExaminationLevel::Basic;
 }
 
 App * App::Snapshot::unpack(Container * container) {
