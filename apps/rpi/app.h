@@ -2,8 +2,8 @@
 #define RPI_APP_H
 
 #include <escher.h>
+#include <apps/apps_container.h>
 #include "rpi_controller.h"
-#include "../apps_container.h"
 
 namespace Rpi {
 
@@ -14,6 +14,7 @@ public:
     I18n::Message name() override;
     I18n::Message upperName() override;
     const Image * icon() override;
+    App::Descriptor::ExaminationLevel examinationLevel() override;
   };
   class Snapshot : public ::App::Snapshot {
   public:

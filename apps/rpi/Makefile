@@ -9,6 +9,6 @@ apps_src += $(addprefix apps/rpi/,\
 
 app_images += apps/rpi/rpi_icon.png
 
-i18n_files += $(call i18n_with_universal_for,probability/base)
+i18n_files += $(call i18n_without_universal_for,rpi/base)
 
 $(eval $(call depends_on_image,apps/rpi/app.cpp,apps/rpi/rpi_icon.png))

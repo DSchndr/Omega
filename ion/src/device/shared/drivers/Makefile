@@ -3,8 +3,8 @@ ion_device_src += $(addprefix ion/src/device/shared/drivers/, \
   battery.cpp \
   base64.cpp \
   board.cpp \
-  console_uart.cpp:+consoleuart \
-  console_dummy.cpp:-consoleuart \
+  console_uart.cpp:-consoleuart \
+  console_dummy.cpp:+consoleuart \
   crc32.cpp \
   display.cpp \
   events_keyboard_platform.cpp \
