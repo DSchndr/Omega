@@ -1,3 +1,11 @@
+## RPI BRANCH
+
+Build does only work on n0100!
+Some features like rpn and atom (as well as some languages) are removed because n0100 does not have enough memory
+Add Omega/apps/rpi/rpi_icon.png to Omega/themes/local/*/apps/rpi_icon.png before build
+Write to @DSchndr on Telegram in case you have questions
+
+
 <p align="center"><img src="https://user-images.githubusercontent.com/12123721/87953533-75a22380-caab-11ea-8cde-c40291c4a9ae.png" /></p>
 
 <p align="center">
