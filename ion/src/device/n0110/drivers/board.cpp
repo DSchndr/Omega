@@ -249,8 +249,11 @@ void initClocks() {
   RCC.AHB3ENR()->setFSMCEN(true);
 
   // APB1 bus
+  class RCC::APB1ENR apb1enr(0x00008000); // Reset value
   // We're using TIM3 for the LEDs
-  RCC.APB1ENR()->setTIM3EN(true);
+  apb1enr.setTIM3EN(true);
+  apb1enr.setSPI3EN(true); //Enable spi3 for rpi
+  RCC.APB1ENR()->set(apb1enr);
 
   // APB2 bus
   class RCC::APB2ENR apb2enr(0); // Reset value
