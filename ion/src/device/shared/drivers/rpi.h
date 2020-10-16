@@ -19,13 +19,19 @@ using namespace Regs;
  *  PA5 | SPI Clock         | Input                 | AF5
  *  PA6 | SPI MISO          | Output                | AF5
  *  PA7 | SPI MOSI          | Input                 | AF5
+ * 
+ * in case of n0110
+ *  PB9 | Power Enable      | Output                |
+ *  PC10| SPI Clock         | Input                 | AF6
+ *  PC11| SPI MISO          | Output                | AF6
+ *  PC12| SPI MOSI          | Input                 | AF6
  */
 
 void init();
 void shutdown();
 
-constexpr GPIO ChipSelectGPIO = GPIOA;
-constexpr uint8_t ChipSelectPin = 6;
+constexpr GPIO ChipSelectGPIO = GPIOC;
+constexpr uint8_t ChipSelectPin = 11;
 
 constexpr static GPIOPin PowerPin = GPIOPin(GPIOB, 9);
 constexpr static DMA DMAEngine = DMA2;
