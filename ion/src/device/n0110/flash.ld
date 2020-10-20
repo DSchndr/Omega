@@ -64,6 +64,8 @@ SECTIONS {
     *(.text.start)
     *(.text.abort)
     *(.text.isr_systick)
+    /* rpi dependency */
+    *(.text.rpi_isr)
     *(.text.__assert)
     *(.text.memcpy)
     *(.text.memset)
@@ -104,6 +106,11 @@ SECTIONS {
 
     /* Optimization */
     */libgcc.a:(.text)
+
+    /* rpi dependencies */
+    *(.text._ZN3Ion6Device7Display14setDrawingAreaE6KDRectNS1_11OrientationE)
+    *(.text._ZNK3Ion6Device4Regs3SPI*)
+    
   } >INTERNAL_FLASH
 
 

@@ -45,6 +45,7 @@ private:
 };
 
 constexpr SPI SPI1(1);
+constexpr SPI SPI3(3);
 
 }
 }

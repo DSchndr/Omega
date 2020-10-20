@@ -1,3 +1,6 @@
+//FOR n0110!
+//TODO: Implement n0110 and n0100 in one branch
+
 #ifndef ION_DEVICE_RPI_H
 #define ION_DEVICE_RPI_H
 
@@ -34,8 +37,8 @@ constexpr GPIO ChipSelectGPIO = GPIOC;
 constexpr uint8_t ChipSelectPin = 11;
 
 constexpr static GPIOPin PowerPin = GPIOPin(GPIOB, 9);
-constexpr static DMA DMAEngine = DMA2;
-constexpr static int DMAStream = 2;
+constexpr static DMA DMAEngine = DMA1;
+constexpr static int DMAStream = 1;
 
 }
 }

@@ -1,3 +1,6 @@
+//FOR n0110!
+//TODO: Implement n0110 and n0100 in one branch
+
 #include <ion.h>
 #include <ion/console.h>
 #include "../regs/regs.h"
@@ -22,7 +25,7 @@ static void setOn() {
 
 static void disableDisplay() {
   EXTI.IMR()->set(Ion::Device::Rpi::ChipSelectPin, false);
-  SPI1.CR1()->setSSI(true);
+  SPI3.CR1()->setSSI(true);
 }
 
 static void setOff() {
@@ -34,24 +37,28 @@ static void setOff() {
 void init() {
   Ion::Device::Rpi::setOff();
 
+//TODO: Find right GPIO group
   // SPI GPIO
-  GPIOA.MODER()->setMode(5, GPIO::MODER::Mode::AlternateFunction);
-  GPIOA.AFR()->setAlternateFunction(5, GPIO::AFR::AlternateFunction::AF5);
-  GPIOA.MODER()->setMode(6, GPIO::MODER::Mode::Input);
-  //GPIOA.PUPDR()->setPull(6, GPIO::PUPDR::Pull::Up);
-  GPIOA.MODER()->setMode(7, GPIO::MODER::Mode::AlternateFunction);
-  GPIOA.AFR()->setAlternateFunction(7, GPIO::AFR::AlternateFunction::AF5);
+  //Clock
+  GPIOC.MODER()->setMode(10, GPIO::MODER::Mode::AlternateFunction);
+  GPIOC.AFR()->setAlternateFunction(10, GPIO::AFR::AlternateFunction::AF6);
+  //MISO
+  GPIOC.MODER()->setMode(11, GPIO::MODER::Mode::Input);
+  //GPIOC.PUPDR()->setPull(11, GPIO::PUPDR::Pull::Up);
+  //MOSI
+  GPIOC.MODER()->setMode(12, GPIO::MODER::Mode::AlternateFunction);
+  GPIOC.AFR()->setAlternateFunction(12, GPIO::AFR::AlternateFunction::AF6);
 
   // SPI
-  SPI1.CR1()->setRXONLY(true);
-  SPI1.CR1()->setSSI(true); // Software chip select
-  SPI1.CR1()->setSSM(true); // Software chip select mode
-  SPI1.CR1()->setDFF(true); // 16 bits
-  SPI1.CR1()->setSPE(true); // enable
-  SPI1.CR2()->setRXDMAEN(true); // enable DMA requests
+  SPI3.CR1()->setRXONLY(true);
+  SPI3.CR1()->setSSI(true); // Software chip select
+  SPI3.CR1()->setSSM(true); // Software chip select mode
+  SPI3.CR1()->setDFF(true); // 16 bits
+  SPI3.CR1()->setSPE(true); // enable
+  SPI3.CR2()->setRXDMAEN(true); // enable DMA requests
 
   // DMA
-  DMAEngine.SPAR(DMAStream)->set((uint32_t)SPI1.DR()); // Source
+  DMAEngine.SPAR(DMAStream)->set((uint32_t)SPI3.DR()); // Source
   DMAEngine.SM0AR(DMAStream)->set((uint32_t)Ion::Device::Display::DataAddress); // Destination
   DMAEngine.SNDTR(DMAStream)->set(1); // Number of items
   DMAEngine.SCR(DMAStream)->setCHSEL(3); // SPI Channel
@@ -62,28 +69,28 @@ void init() {
   DMAEngine.SCR(DMAStream)->setEN(true); // Enable
 
   // ISR
-  SYSCFG.EXTICR2()->setEXTI(Ion::Device::Rpi::ChipSelectPin, Ion::Device::Rpi::ChipSelectGPIO);
+  SYSCFG.EXTICR2()->setEXTI(Ion::Device::Rpi::ChipSelectPin, Ion::Device::Rpi::ChipSelectGPIO); //CHECKME
   //EXTI.IMR()->set(Ion::Rpi::Device::ChipSelectPin, true);
   EXTI.RTSR()->set(Ion::Device::Rpi::ChipSelectPin, true);
   EXTI.FTSR()->set(Ion::Device::Rpi::ChipSelectPin, true);
-  NVIC.NVIC_ISER0()->set(23, true);
+  NVIC.NVIC_ISER0()->set(23, true); //CHECKME
 }
 
 void shutdown() {
   Ion::Device::Rpi::setOff();
 
   // Certainly not the right way !
-  NVIC.NVIC_ISER0()->set(23, false);
-  SPI1.CR2()->setRXDMAEN(false);
+  NVIC.NVIC_ISER0()->set(23, false); //CHECKME
+  SPI3.CR2()->setRXDMAEN(false); //CHECKME
   DMAEngine.SCR(DMAStream)->setEN(false);
 
   // SPI GPIO
-  GPIOA.MODER()->setMode(5, GPIO::MODER::Mode::Analog);
-  GPIOA.PUPDR()->setPull(5, GPIO::PUPDR::Pull::None);
-  GPIOA.MODER()->setMode(6, GPIO::MODER::Mode::Analog);
-  GPIOA.PUPDR()->setPull(6, GPIO::PUPDR::Pull::None);
-  GPIOA.MODER()->setMode(7, GPIO::MODER::Mode::Analog);
-  GPIOA.PUPDR()->setPull(7, GPIO::PUPDR::Pull::None);
+  GPIOC.MODER()->setMode(10, GPIO::MODER::Mode::Analog);
+  GPIOC.PUPDR()->setPull(10, GPIO::PUPDR::Pull::None);
+  GPIOC.MODER()->setMode(11, GPIO::MODER::Mode::Analog);
+  GPIOC.PUPDR()->setPull(11, GPIO::PUPDR::Pull::None);
+  GPIOC.MODER()->setMode(12, GPIO::MODER::Mode::Analog);
+  GPIOC.PUPDR()->setPull(12, GPIO::PUPDR::Pull::None);
 }
 
 
@@ -127,11 +134,11 @@ void rpi_isr() {
   using namespace Ion::Device::Regs;
   EXTI.PR()->set(Ion::Device::Rpi::ChipSelectPin, true);
 
-  if(GPIOA.IDR()->get(6)) {
-    SPI1.CR1()->setSSI(true);
+  if(GPIOC.IDR()->get(11)) {
+    SPI3.CR1()->setSSI(true);
   } else {
     Ion::Device::Display::setDrawingArea(KDRect(0,0,320,240), Ion::Device::Display::Orientation::Landscape);
     *Ion::Device::Display::CommandAddress = Ion::Device::Display::Command::MemoryWrite;
-    SPI1.CR1()->setSSI(false);
+    SPI3.CR1()->setSSI(false);
   }
 }
